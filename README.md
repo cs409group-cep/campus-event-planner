@@ -115,8 +115,7 @@ The frontend will run on `http://localhost:3000`
 
 ## User Roles
 
-- **Student**: Can browse events, RSVP, and view their profile
-- **Organizer**: Can do everything a student can, plus create and delete events
+- Any user can browse events and view event details. A logged in user can additionally RSVP, set reminders, view their profile&calendar, create and delete events.
 
 ## Environment Variables
 
