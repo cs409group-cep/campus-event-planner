@@ -249,6 +249,23 @@ const EventDetails = () => {
     event.organizer._id === (user._id || user.id)
   )
 
+  // Determine if the event datetime is in the past
+  const isEventPast = (() => {
+    if (!event) return false
+    try {
+      const d = new Date(event.date)
+      if (event.time && typeof event.time === 'string') {
+        const m = event.time.match(/(\d{1,2}):(\d{2})/)
+        if (m) {
+          d.setHours(parseInt(m[1], 10), parseInt(m[2], 10), 0, 0)
+        }
+      }
+      return d.getTime() < Date.now()
+    } catch (e) {
+      return false
+    }
+  })()
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <button
@@ -350,7 +367,7 @@ const EventDetails = () => {
               <div className="flex flex-wrap gap-4">
                 <button
                   onClick={handleRsvp}
-                  disabled={rsvpLoading || isOrganizer}
+                  disabled={rsvpLoading || isOrganizer || isEventPast}
                   className={`px-6 py-3 rounded-md font-medium transition ${
                     hasRsvp
                       ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -393,6 +410,9 @@ const EventDetails = () => {
                 <p className="text-sm text-gray-500">
                   You cannot RSVP to your own event
                 </p>
+              )}
+              {isEventPast && (
+                <p className="text-sm text-gray-500">This event has passed — RSVPs are closed.</p>
               )}
             </div>
           )}

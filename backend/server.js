@@ -19,6 +19,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/reminders', require('./routes/reminders'));
+app.use('/api/admin/acm-sync', require('./routes/acmSync'));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -35,6 +36,13 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/eventease
   // Start reminder scheduler after DB connection
   const { startScheduler } = require('./services/reminderScheduler');
   startScheduler();
+  // Start ACM sync scheduler (optional - configured via env)
+  try {
+    const { startAcmSync } = require('./services/acmSyncService');
+    startAcmSync();
+  } catch (e) {
+    console.warn('ACM sync service not available or failed to start:', e.message || e);
+  }
 })
 .catch(err => console.error('MongoDB connection error:', err));
 

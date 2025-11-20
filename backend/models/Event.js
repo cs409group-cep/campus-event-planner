@@ -48,6 +48,16 @@ const eventSchema = new mongoose.Schema({
     type: String,
     default: ''
   }
+  ,
+  // External integration metadata (optional)
+  externalSource: {
+    type: String,
+    default: null
+  },
+  externalId: {
+    type: String,
+    default: null
+  }
 }, {
   timestamps: true
 });

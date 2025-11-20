@@ -10,6 +10,7 @@ const Home = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
+  const [showPast, setShowPast] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
 
   const categories = [
@@ -25,7 +26,7 @@ const Home = () => {
 
   useEffect(() => {
     fetchEvents()
-  }, [selectedCategory, selectedDate])
+  }, [selectedCategory, selectedDate, showPast])
 
   // Refresh events when component mounts (e.g., after creating an event)
   useEffect(() => {
@@ -43,6 +44,7 @@ const Home = () => {
       if (selectedCategory) params.category = selectedCategory
       if (selectedDate) params.date = selectedDate
       if (searchTerm) params.search = searchTerm
+      if (showPast) params.includePast = true
 
       const res = await axios.get('/api/events', { params })
       setEvents(res.data)
@@ -62,6 +64,7 @@ const Home = () => {
     setSelectedCategory('')
     setSelectedDate('')
     setSearchTerm('')
+    setShowPast(false)
     fetchEvents()
   }
 
@@ -105,6 +108,17 @@ const Home = () => {
               <FiFilter className="h-5 w-5" />
               <span>Filters</span>
             </button>
+            <div className="flex items-center">
+              <label className="inline-flex items-center space-x-2 ml-3">
+                <input
+                  type="checkbox"
+                  checked={showPast}
+                  onChange={(e) => setShowPast(e.target.checked)}
+                  className="form-checkbox h-4 w-4 text-primary-600"
+                />
+                <span className="text-sm text-gray-700">Show past events</span>
+              </label>
+            </div>
           </div>
         </form>
 
@@ -136,10 +150,11 @@ const Home = () => {
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  min={format(new Date(), 'yyyy-MM-dd')}
+                  min={showPast ? undefined : format(new Date(), 'yyyy-MM-dd')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
+            
             </div>
             {(selectedCategory || selectedDate) && (
               <button

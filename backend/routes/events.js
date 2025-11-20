@@ -8,6 +8,30 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 
+// Helper: combine event.date and event.time into a single Date object
+function getEventDateTime(event) {
+  if (!event) return null;
+  let d = null;
+  try {
+    d = event.date ? new Date(event.date) : null;
+    if (!d || isNaN(d.getTime())) d = null;
+  } catch (e) {
+    d = null;
+  }
+
+  if (event.time && typeof event.time === 'string') {
+    const m = event.time.match(/(\d{1,2}):(\d{2})/);
+    if (m) {
+      const hh = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10);
+      if (!d) d = new Date();
+      d.setHours(hh, mm, 0, 0);
+    }
+  }
+
+  return d;
+}
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -48,7 +72,8 @@ router.get('/', [
   query('search').optional().isString()
 ], async (req, res) => {
   try {
-    const { category, date, search } = req.query;
+    const { category, date, search, includePast } = req.query;
+    const wantPast = includePast === '1' || includePast === 'true' || includePast === 'on' || includePast === true;
     const filter = {};
 
     if (category) {
@@ -62,8 +87,10 @@ router.get('/', [
       endOfDay.setHours(23, 59, 59, 999);
       filter.date = { $gte: startOfDay, $lte: endOfDay };
     } else {
-      // Only show future events by default
-      filter.date = { $gte: new Date() };
+      // Only show future events by default (unless includePast requested)
+      if (!wantPast) {
+        filter.date = { $gte: new Date() };
+      }
     }
 
     if (search) {
@@ -227,6 +254,12 @@ router.post('/:id/rsvp', auth, async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
+    // Prevent RSVPs for past events
+    const eventDateTime = getEventDateTime(event);
+    if (eventDateTime && eventDateTime.getTime() < Date.now()) {
+      return res.status(400).json({ message: 'Cannot RSVP to past events' });
+    }
+
     // Check if already RSVP'd
     if (event.rsvps.includes(req.user._id)) {
       return res.status(400).json({ message: 'Already RSVP\'d to this event' });
@@ -305,6 +338,11 @@ router.put('/:id', auth, upload.single('image'), [
       return res.status(404).json({ message: 'Event not found' });
     }
 
+      // Prevent editing events that originate from an external source (read-only)
+      if (event.externalSource) {
+        return res.status(403).json({ message: 'Official/external events cannot be edited' });
+      }
+
     // Check if user is the organizer
     if (event.organizer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to edit this event' });
@@ -358,6 +396,11 @@ router.delete('/:id', auth, async (req, res) => {
     
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Prevent deleting events that originate from an external source (read-only)
+    if (event.externalSource) {
+      return res.status(403).json({ message: 'Official/external events cannot be deleted' });
     }
 
     // Check if user is the organizer
